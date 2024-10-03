@@ -1,5 +1,4 @@
 package com.example.charlesshengwen_guesstheword
-
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -15,9 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextAlign
 import com.example.charlesshengwen_guesstheword.ui.theme.CharlesShengwenGuessTheWordTheme
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.unit.dp
 import android.content.res.Configuration
 import androidx.compose.ui.platform.LocalContext
 
@@ -90,7 +87,6 @@ fun GuessingGame(
             }
 
     } else {
-        // 横屏布局保持不变
         Row(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier
@@ -165,7 +161,6 @@ fun ChooseTheLetter(
         modifier = Modifier.padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Create rows of buttons
         for (row in 0..4) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -210,16 +205,14 @@ fun HintButton(
     selectedLetters: MutableState<List<Boolean>>,
     hintUsed: MutableState<Int>,
     wrongGuesses: MutableState<Int>,
-    isDisabled: Boolean // Add this parameter
+    isDisabled: Boolean
 ) {
-    val context = LocalContext.current // Get the context in a composable-friendly way
-
+    val context = LocalContext.current
     Button(
         onClick = {
             when (hintUsed.value) {
                 0 -> Toast.makeText(context, "Hint: Food", Toast.LENGTH_SHORT).show()
                 1 -> {
-                    // Disable half of the letters (not in word)
                     val notInWordLetters = (0..25).filter { !gameWord.contains(('A' + it)) }
                     val halfLetters = notInWordLetters.shuffled().take(notInWordLetters.size / 2)
                     selectedLetters.value = selectedLetters.value.toMutableList().apply {
@@ -228,7 +221,6 @@ fun HintButton(
                     wrongGuesses.value++
                 }
                 2 -> {
-                    // Show all vowels
                     val vowels = listOf('A', 'E', 'I', 'O', 'U')
                     selectedLetters.value = selectedLetters.value.toMutableList().apply {
                         vowels.forEach { this[it - 'A'] = true }
@@ -238,7 +230,7 @@ fun HintButton(
             }
             hintUsed.value++
         },
-        enabled = !isDisabled // Disable if game is won or over
+        enabled = !isDisabled
     ) {
         Text(text = "Hint")
     }
