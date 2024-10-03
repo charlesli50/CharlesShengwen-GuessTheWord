@@ -1,34 +1,25 @@
 package com.example.charlesshengwen_guesstheword
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.charlesshengwen_guesstheword.ui.theme.CharlesShengwenGuessTheWordTheme
-
-import android.content.res.Configuration
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.BasicText
-import androidx.compose.ui.Alignment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextOverflow
-
+import com.example.charlesshengwen_guesstheword.ui.theme.CharlesShengwenGuessTheWordTheme
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.dp
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,9 +27,30 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             CharlesShengwenGuessTheWordTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                var gameWord by remember { mutableStateOf("PIZZA") } // Example word for testing
+                var selectedLetters = remember { mutableStateOf(List(26) { false }) }
+                var wrongGuesses = remember { mutableStateOf(0) }
+                var hintUsed = remember { mutableStateOf(0) }
+
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    floatingActionButton = {
+                        FloatingActionButton(onClick = {
+                            selectedLetters.value = List(26) { false }
+                            wrongGuesses.value = 0
+                            hintUsed.value = 0 // Reset hint counter
+                            gameWord = "BURGER" // New game word
+                        }) {
+                            Text("New Game")
+                        }
+                    }
+                ) { innerPadding ->
                     GuessingGame(
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier.padding(innerPadding),
+                        gameWord = gameWord,
+                        selectedLetters = selectedLetters,
+                        wrongGuesses = wrongGuesses,
+                        hintUsed = hintUsed
                     )
                 }
             }
@@ -47,50 +59,108 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun GuessingGame(modifier: Modifier = Modifier) {
+fun GuessingGame(
+    modifier: Modifier = Modifier,
+    gameWord: String,
+    selectedLetters: MutableState<List<Boolean>>,
+    wrongGuesses: MutableState<Int>,
+    hintUsed: MutableState<Int>
+) {
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
-
-    //list of selected characters, character 'A' + index is selected if that index is true
-    val selectedLetters = remember { mutableStateOf(List(26) { false }) }
-
-
-    // panels
     if (isPortrait) {
-        Column {
-            MainGame()
-            ChooseTheLetter(selectedLetters)
-        }
+
+            Column(
+                modifier = Modifier.fillMaxHeight()
+            ) {
+                MainGame(
+                    gameWord = gameWord,
+                    selectedLetters = selectedLetters,
+                    wrongGuesses = wrongGuesses.value,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(16.dp)
+                )
+                ChooseTheLetter(
+                    selectedLetters = selectedLetters,
+                    gameWord = gameWord,
+                    wrongGuesses = wrongGuesses
+                )
+            }
+
     } else {
-        Row(modifier = Modifier.fillMaxWidth()){
+        // 横屏布局保持不变
+        Row(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                ChooseTheLetter(selectedLetters)
-                HintButton()
+                ChooseTheLetter(selectedLetters, gameWord, wrongGuesses)
+                HintButton(gameWord, selectedLetters, hintUsed, wrongGuesses, false)
             }
 
-            MainGame(modifier = Modifier
-                .weight(1f)
-                .padding(16.dp))
+            MainGame(
+                gameWord = gameWord,
+                selectedLetters = selectedLetters,
+                wrongGuesses = wrongGuesses.value,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(16.dp)
+            )
         }
     }
 }
 
+
+
 @Composable
-fun MainGame(modifier: Modifier = Modifier) {
-    Text(
-        text = "Main Game!",
-        modifier = modifier
-    )
+fun MainGame(
+    gameWord: String,
+    selectedLetters: MutableState<List<Boolean>>,
+    wrongGuesses: Int,
+    modifier: Modifier = Modifier
+): Pair<Boolean, Boolean> {
+    val correctLetters = gameWord.map { if (selectedLetters.value[it - 'A']) it else '_' }.joinToString(" ")
+    val isGameOver = wrongGuesses >= 6
+    val isGameWon = correctLetters.replace(" ", "") == gameWord
+
+    Column(
+        modifier = modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceEvenly
+    ) {
+        Text(text = if (isGameOver) "Game Over" else if (isGameWon) "You Won!" else "Guess the word!", fontSize = 24.sp)
+        Text(text = correctLetters, fontSize = 36.sp)
+
+        // Draw Hangman
+        HangmanDrawing(wrongGuesses)
+    }
+    return Pair(isGameOver, isGameWon)
 }
 
 @Composable
-fun ChooseTheLetter(selectedLetters:MutableState<List<Boolean>>, modifier: Modifier = Modifier) {
+fun HangmanDrawing(wrongGuesses: Int) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (wrongGuesses > 0) Text("Head")
+        if (wrongGuesses > 1) Text("Body")
+        if (wrongGuesses > 2) Text("Left Arm")
+        if (wrongGuesses > 3) Text("Right Arm")
+        if (wrongGuesses > 4) Text("Left Leg")
+        if (wrongGuesses > 5) Text("Right Leg")
+    }
+}
+
+@Composable
+fun ChooseTheLetter(
+    selectedLetters: MutableState<List<Boolean>>,
+    gameWord: String,
+    wrongGuesses: MutableState<Int>
+) {
     Column(
         modifier = Modifier.padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -104,23 +174,26 @@ fun ChooseTheLetter(selectedLetters:MutableState<List<Boolean>>, modifier: Modif
                 for (col in 0..6) {
                     val index = row * 7 + col
                     if (index < 26) {
-                        val letter = ('A' + index).toString()  // Get the corresponding letter
+                        val letter = ('A' + index).toString()
                         Button(
                             onClick = {
-                                selectedLetters.value = selectedLetters.value.toMutableList().apply { this[index] = true }
+                                val isCorrect = gameWord.contains(letter)
+                                if (!isCorrect) {
+                                    wrongGuesses.value++
+                                }
+                                selectedLetters.value = selectedLetters.value.toMutableList().apply {
+                                    this[index] = true
+                                }
                             },
-                            enabled = !selectedLetters.value[index], // disable button if already selected
+                            enabled = !selectedLetters.value[index],
                             modifier = Modifier
-                                    .weight(5f)
+                                .weight(1f)
                                 .padding(1.dp)
                                 .height(30.dp)
-                                .width(20.dp),
-                            contentPadding = PaddingValues(0.dp) //makes the text not get clipped by padding
                         ) {
                             Text(
                                 letter,
-                                fontSize = 12.sp,
-                                modifier = Modifier.fillMaxSize(),
+                                fontSize = 16.sp,
                                 textAlign = TextAlign.Center,
                             )
                         }
@@ -132,19 +205,54 @@ fun ChooseTheLetter(selectedLetters:MutableState<List<Boolean>>, modifier: Modif
 }
 
 @Composable
-fun HintButton(modifier: Modifier = Modifier) {
-    Text(
-        text = "Hint Button!",
-        modifier = modifier
-    )
+fun HintButton(
+    gameWord: String,
+    selectedLetters: MutableState<List<Boolean>>,
+    hintUsed: MutableState<Int>,
+    wrongGuesses: MutableState<Int>,
+    isDisabled: Boolean // Add this parameter
+) {
+    val context = LocalContext.current // Get the context in a composable-friendly way
+
+    Button(
+        onClick = {
+            when (hintUsed.value) {
+                0 -> Toast.makeText(context, "Hint: Food", Toast.LENGTH_SHORT).show()
+                1 -> {
+                    // Disable half of the letters (not in word)
+                    val notInWordLetters = (0..25).filter { !gameWord.contains(('A' + it)) }
+                    val halfLetters = notInWordLetters.shuffled().take(notInWordLetters.size / 2)
+                    selectedLetters.value = selectedLetters.value.toMutableList().apply {
+                        halfLetters.forEach { this[it] = true }
+                    }
+                    wrongGuesses.value++
+                }
+                2 -> {
+                    // Show all vowels
+                    val vowels = listOf('A', 'E', 'I', 'O', 'U')
+                    selectedLetters.value = selectedLetters.value.toMutableList().apply {
+                        vowels.forEach { this[it - 'A'] = true }
+                    }
+                    wrongGuesses.value++
+                }
+            }
+            hintUsed.value++
+        },
+        enabled = !isDisabled // Disable if game is won or over
+    ) {
+        Text(text = "Hint")
+    }
 }
-
-
 
 @Preview(showBackground = true)
 @Composable
 fun GreetingPreview() {
     CharlesShengwenGuessTheWordTheme {
-        GuessingGame()
+        GuessingGame(
+            gameWord = "PIZZA",
+            selectedLetters = remember { mutableStateOf(List(26) { false }) },
+            wrongGuesses = remember { mutableStateOf(0) },
+            hintUsed = remember { mutableStateOf(0) }
+        )
     }
 }
