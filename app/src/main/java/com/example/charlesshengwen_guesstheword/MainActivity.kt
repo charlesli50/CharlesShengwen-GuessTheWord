@@ -17,12 +17,18 @@ import android.content.res.Configuration
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,19 +51,32 @@ fun GuessingGame(modifier: Modifier = Modifier) {
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
+
+    //list of selected characters, character 'A' + index is selected if that index is true
+    val selectedLetters = remember { mutableStateOf(List(26) { false }) }
+
+
+    // panels
     if (isPortrait) {
         Column {
             MainGame()
-            ChooseTheLetter()
+            ChooseTheLetter(selectedLetters)
         }
     } else {
-        Row {
-            Column {
-                ChooseTheLetter()
+        Row(modifier = Modifier.fillMaxWidth()){
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                ChooseTheLetter(selectedLetters)
                 HintButton()
             }
 
-            MainGame()
+            MainGame(modifier = Modifier
+                .weight(1f)
+                .padding(16.dp))
         }
     }
 }
@@ -71,11 +90,45 @@ fun MainGame(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun ChooseTheLetter(modifier: Modifier = Modifier) {
-    Text(
-        text = "Choose the letter!",
-        modifier = modifier
-    )
+fun ChooseTheLetter(selectedLetters:MutableState<List<Boolean>>, modifier: Modifier = Modifier) {
+    Column(
+        modifier = Modifier.padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Create rows of buttons
+        for (row in 0..4) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                for (col in 0..6) {
+                    val index = row * 7 + col
+                    if (index < 26) {
+                        val letter = ('A' + index).toString()  // Get the corresponding letter
+                        Button(
+                            onClick = {
+                                selectedLetters.value = selectedLetters.value.toMutableList().apply { this[index] = true }
+                            },
+                            enabled = !selectedLetters.value[index], // disable button if already selected
+                            modifier = Modifier
+                                    .weight(5f)
+                                .padding(1.dp)
+                                .height(30.dp)
+                                .width(20.dp),
+                            contentPadding = PaddingValues(0.dp) //makes the text not get clipped by padding
+                        ) {
+                            Text(
+                                letter,
+                                fontSize = 12.sp,
+                                modifier = Modifier.fillMaxSize(),
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
